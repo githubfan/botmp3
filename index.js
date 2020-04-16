@@ -2,7 +2,7 @@ const Discord = require('discord.js');
 const client = new Discord.Client();
 const ytdl = require('ytdl-core');
 const ytsr = require('ytsr');
-const token = 'Njk5MzI4MjI3NzE3Njc3MDY2.XpSyLw.QgeSHJ-FwqpxW8w2G_PJ0yA9XKI'; 
+const token = process.env.token; 
 const PREFIX = 'bot';
 const queue = new Map;
 var songInfo = new Object;
@@ -217,4 +217,4 @@ const embed = new Discord.RichEmbed()
     .addField('Qnp','```This command tells you what is currently playing! \nSyntax: "bot np"```', true)
     .setFooter('bot.mp4', 'https://cdn.discordapp.com/embed/avatars/2.png');
 
-client.login(token);
+client.login(process.env.token);
