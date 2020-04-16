@@ -43,10 +43,22 @@ client.on('message', async message => {
     if(command === "p"){
       const link = args.join(" ");
       const voiceChannel = message.member.voiceChannel;
+      
       if(!voiceChannel){ 
         embedWarn.setDescription('Sorry but you need to be in a channel to play music!')
         return await message.channel.send(embedWarn)
       } 
+      if(!serverQueue){
+        const QueueConstruct = {
+          textChannel: message.channel,
+          voiceChannel: voiceChannel,
+          connection: null,
+          songs: [],
+          volume: 5,
+          playing: true,
+          skips: 0,
+          skipping: []
+        }
       if(queue.get(message.guild.id).voiceChannel !== message.member.voiceChannel){
         embedWarn.setDescription("You need to be in the same voice channel to add to the queue!")
         return await message.channel.send(embedWarn);
@@ -76,17 +88,6 @@ client.on('message', async message => {
         }
       }
       console.log(song.url)
-      if(!serverQueue){
-        const QueueConstruct = {
-          textChannel: message.channel,
-          voiceChannel: voiceChannel,
-          connection: null,
-          songs: [],
-          volume: 5,
-          playing: true,
-          skips: 0,
-          skipping: []
-        }
         QueueConstruct.songs.push(song);
         queue.set(message.guild.id, QueueConstruct)
         try {
