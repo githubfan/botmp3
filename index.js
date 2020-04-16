@@ -59,7 +59,7 @@ client.on('message', async message => {
           skips: 0,
           skipping: []
         }
-      if(queue.get(message.guild.id).voiceChannel !== message.member.voiceChannel){
+      if(serverQueue.voiceChannel !== message.member.voiceChannel){
         embedWarn.setDescription("You need to be in the same voice channel to add to the queue!")
         return await message.channel.send(embedWarn);
       }
