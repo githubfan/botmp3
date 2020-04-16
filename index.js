@@ -19,8 +19,9 @@ client.on('message', async message => {
     if(message.content.indexOf(PREFIX) !== 0) return;
     const args = message.content.slice(PREFIX.length).trim().split(/ +/g);
     const command = args.shift().toLowerCase();
+    message.delete().catch(err=>{}); 
     if(command === ""){
-      embedWarn.setDescription("This is an invalid command argument, use 'bot help' to find out what commands this bot provides!")
+      embedWarn.setDescription("This is an invalid command argument, use **'bot help'** to find out what commands this bot provides!")
       return await message.channel.send(embedWarn)
     } 
     if(command === "ping")
@@ -42,11 +43,14 @@ client.on('message', async message => {
     if(command === "p"){
       const link = args.join(" ");
       const voiceChannel = message.member.voiceChannel;
-      if(!voiceChannel){
-        message.delete().catch(err=>{}); 
+      if(!voiceChannel){ 
         embedWarn.setDescription('Sorry but you need to be in a channel to play music!')
         return await message.channel.send(embedWarn)
-      }  
+      } 
+      if(queue.get(message.guild.id).voiceChannel !== message.member.voiceChannel){
+        embedWarn.setDescription("You need to be in the same voice channel to add to the queue!")
+        return await message.channel.send(embedWarn);
+      }
       if(!ytdl.validateURL(link)){
         const songInfo = await ytsr(link);
         song = {
@@ -80,13 +84,14 @@ client.on('message', async message => {
           songs: [],
           volume: 5,
           playing: true,
-          skips: 0
+          skips: 0,
+          skipping: []
         }
         QueueConstruct.songs.push(song);
         queue.set(message.guild.id, QueueConstruct)
         try {
-          message.delete().catch(err=>{}); 
-          embedSuccess.setDescription(`**${queue.get(message.guild.id).songs[0].title}** has been added to the queue and is playing now!`)
+          embedInform.setTitle(`Creating queue and playing...`)
+          embedSuccess.setDescription(`**${queue.get(message.guild.id).songs[0].title}** starting to play now!`)
           await message.channel.send(embedSuccess)
           var connection = await voiceChannel.join();
           QueueConstruct.connection = connection;
@@ -99,13 +104,12 @@ client.on('message', async message => {
         }
       } else {
         serverQueue.songs.push(song);
-        message.delete().catch(err=>{});
+        embedInform.setTitle(`Adding a song to the queue...`)
         embedSuccess.setDescription(`**${song.title}** has been added to the queue!`)
         return await message.channel.send(embedSuccess)
       }
     }
     if(command === "stop"){
-      message.delete().catch(err=>{}); 
       if(queue.get(message.guild.id).voiceChannel !== message.member.voiceChannel || !message.member.voiceChannel){
         embedWarn.setDescription("You need to be in the same voice channel to stop the queue!")
         return message.channel.send(embedWarn);
@@ -117,16 +121,14 @@ client.on('message', async message => {
       if(message.member.roles.find(role => role.name !== "DJ")){
         embedWarn.setDescription('You need the DJ role to stop the queue!')
         return message.channel.send(embedWarn)
-      } 
+      }
       embedSuccess.setDescription('Stopped and deleted the queue!')
       await message.channel.send(embedSuccess)
       serverQueue.songs = [];
       return serverQueue.connection.dispatcher.end();
     }
     if(command === "skip"){
-      message.delete().catch(err=>{}); 
       if(!serverQueue){
- 
         embedWarn.setDescription("There's nothing playing.")
         return await message.channel.send(embedWarn);
       }
@@ -135,8 +137,9 @@ client.on('message', async message => {
         return await message.channel.send(embedWarn);
       }
       if(message.member.roles.find(role => role.name === "DJ") || message.member.voiceChannel.members.size === '1'){
-        embedSuccess.setDescription(`Skipped **${serverQueue.songs[0].title}**`)
-        await message.channel.send(embedSuccess)
+        embedInform.setTitle('Skipping')
+        embedInform.setDescription(`Skipped **${serverQueue.songs[0].title}**`)
+        await message.channel.send(embedInform)
         return serverQueue.connection.dispatcher.end();
       }else {
         if(serverQueue.skips >= (message.member.voiceChannel.members.size / 2)){
@@ -148,6 +151,7 @@ client.on('message', async message => {
           let skipTotal = Math.round(message.member.voiceChannel.members.size / 2)
           if(skipTotal == 1)skipTotal++
           serverQueue.skips++
+          serverQueue.skipping.push(message.author)
           embedInform.setTitle('Skipping in Progress!')
           embedInform.setDescription(`You must have a role called 'DJ' or skip this through a voting process, currently ${serverQueue.skips}/${skipTotal}`)
           return await message.channel.send(embedInform)
@@ -155,18 +159,15 @@ client.on('message', async message => {
       }
     }
     if(command === "np"){
-      message.delete().catch(err=>{});
       if(!serverQueue){
         embedWarn.setDescription("There's nothing playing!")
         return await message.channel.send(embedWarn);
       }
-      message.delete().catch(err=>{});
       embedInform.setTitle('Now playing!')
       embedInform.setDescription(`Now playing: **${serverQueue.songs[0].title}**`)
       return await message.channel.send(embedInform);
     }
     if(command === "volume"){
-      message.delete().catch(err=>{}); 
       if(!serverQueue){
         embedWarn.setDescription("There's nothing playing!")
         return await message.channel.send(embedWarn);
@@ -183,7 +184,6 @@ client.on('message', async message => {
       return await message.channel.send(embedInform)
     }
     if(command === "queue"){
-      message.delete().catch(err=>{}); 
       if(!serverQueue){ 
         embedWarn.setDescription("There's nothing playing.")
         return await message.channel.send(embedWarn);
@@ -200,7 +200,39 @@ client.on('message', async message => {
         }else {
           return await message.channel.send(embedQ);
         }
+    }
+    if(command === "pause"){
+      if(!serverQueue){
+        embedWarn.setDescription("There's nothing playing.")
+        return await message.channel.send(embedWarn);
       }
+      if(queue.get(message.guild.id).voiceChannel !== message.member.voiceChannel || !message.member.voiceChannel){
+        embedWarn.setDescription("You need to be in the same voice channel to pause the queue!")
+        return await message.channel.send(embedWarn);
+      }
+      if(message.member.roles.find(role => role.name === "DJ") || message.member.voiceChannel.members.size === '1'){
+        embedInform.setTitle('Pausing the queue')
+        embedInform.setDescription(`The queue has been paused!`)
+        await message.channel.send(embedInform)
+        return serverQueue.connection.dispatcher.pause();
+      }
+    }
+    if(command === "resume"){
+      if(!serverQueue){
+        embedWarn.setDescription("There's nothing playing.")
+        return await message.channel.send(embedWarn);
+      }
+      if(queue.get(message.guild.id).voiceChannel !== message.member.voiceChannel || !message.member.voiceChannel){
+        embedWarn.setDescription("You need to be in the same voice channel to resume the queue!")
+        return await message.channel.send(embedWarn);
+      }
+      if(message.member.roles.find(role => role.name === "DJ") || message.member.voiceChannel.members.size === '1'){
+        embedInform.setTitle('Resuming the queue')
+        embedInform.setDescription(`The queue has been resumed!`)
+        await message.channel.send(embedInform)
+        return serverQueue.connection.dispatcher.resume();
+      }
+    }
     }
     if(command === "help"){
       return await message.channel.send(embed);
@@ -247,7 +279,7 @@ const embedError = new Discord.RichEmbed()
     .setColor('RED')
 const embedWarn = new Discord.RichEmbed()
     .setTitle("Something went wrong!")
-    .setColor('YELLOW')
+    .setColor('#FFFF00')
 const embedSuccess = new Discord.RichEmbed()
     .setTitle("Success!")
     .setColor("GREEN")
