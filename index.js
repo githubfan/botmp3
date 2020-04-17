@@ -7,6 +7,7 @@ const queue = new Map;
 var songInfo, songInfo2, song = new Object;
 const getInfo = require('ytdl-getinfo')
 let filter;
+
 client.on('ready', () =>{
     console.log('Locked and loaded.');
     client.user.setActivity(`in ${client.guilds.size} servers`);
@@ -20,6 +21,10 @@ client.on('message', async message => {
     const args = message.content.slice(PREFIX.length).trim().split(/ +/g);
     const command = args.shift().toLowerCase();
     message.delete().catch(err=>{}); 
+    embedInform.setTimestamp(new Date())
+    embedWarn.setTimestamp(new Date())
+    embedError.setTimestamp(new Date())
+    embed.setTimestamp(new Date())
     if(command === ""){
       embedWarn.setFooter(message.member.displayName)
       embedWarn.setDescription("This is an invalid command argument, use **'bot help'** to find out what commands this bot provides!")
@@ -53,7 +58,7 @@ client.on('message', async message => {
         return await message.channel.send(embedWarn)
       } 
       if(!ytdl.validateURL(link)){
-        const songInfo = await ytsr(link);
+        songInfo = await ytsr(link); 
         song = {
           title: songInfo.items[0].title,
           url: songInfo.items[0].link,
@@ -63,23 +68,18 @@ client.on('message', async message => {
       }else {
         try {
           songInfo = await ytdl.getInfo(link)
-          await ytsr(songInfo.title, function(err, filters){
-            if(err) throw err;
-              filter = filters.get('Type').find(o => o.name === 'Video');
-          })
-          songInfo2 = await ytsr(filter.ref);
-          
+          songInfo2 = await ytsr(songInfo.title);
+          song = {
+            title: songInfo.title,
+            url: songInfo.video_url,
+            duration: songInfo2.items[0].duration,
+            thumbnail: songInfo2.items[0].thumbnail
+          }
         }catch(err){
           console.log(`There's been an error trying to search! Here it is: ${err}`)
           embedError.setFooter(message.member.displayName)
           embedError.setDescription(`There's been an error trying to search, please try again.`)
           await message.channel.send(embedError)
-        }
-        song = {
-          title: songInfo.title,
-          url: songInfo.video_url,
-          duration: songInfo2.items[0].duration,
-          thumbnail: songInfo2.items[0].thumbnail
         }
       }
       if(song.url.includes('channel') || song.url.includes('user')){
@@ -135,7 +135,7 @@ client.on('message', async message => {
         embedWarn.setDescription("There's nothing playing.")
         return message.channel.send(embedWarn);
       }
-      if(message.member.roles.find(role => role.name === "DJ")){
+      if(!message.member.roles.find(role => role.name === "DJ")){
         embedWarn.setFooter(message.member.displayName)
         embedWarn.setDescription('You need the DJ role to stop the queue!')
         return message.channel.send(embedWarn)
@@ -201,7 +201,12 @@ client.on('message', async message => {
       embedInform.setDescription(`Now playing: **${serverQueue.songs[0].title}**`)
       return await message.channel.send(embedInform);
     }
-    if(command === "volume"){
+    if(command === "vol"){
+      if(!((message.member.roles.find(role => role.name === "DJ") || message.member.voiceChannel.members.size === '1'))){
+        embedWarn.setFooter(message.member.displayName)
+        embedWarn.setDescription(`You must have a role called 'DJ' or be alone in voice channel to change the volume!`)
+        return await message.channel.send(embedWarn);
+      }
       if(!serverQueue){
         embedWarn.setFooter(message.member.displayName)
         embedWarn.setDescription("There's nothing playing!")
@@ -213,7 +218,13 @@ client.on('message', async message => {
         embedInform.setDescription(`Current volume: **${serverQueue.volume}**`)
         return await message.channel.send(embedInform)
       }
-      serverQueue.volume = args[0];
+      if(args[0] > 25){
+        serverQueue.volume = 25;
+      }else if(args[0] < 1){
+        serverQueue.volume = 1;
+      }else{
+        serverQueue.volume = args[0];
+      }
       serverQueue.connection.dispatcher.setVolumeLogarithmic(args[0] / 5);
       embedInform.setTitle('Volume Change!')
       embedInform.setFooter(message.member.displayName)
@@ -227,18 +238,28 @@ client.on('message', async message => {
         return await message.channel.send(embedWarn);
       }
       const embedQ = new Discord.RichEmbed()
-      embedQ.setColor('PURPLE')
-      embedQ.setTitle("Queue!")
-      embedQ.setFooter(message.member.displayName)
-      embedQ.addField(`Now playing: **[${serverQueue.songs[0].title}](${serverQueue.songs[0].url})**!`,`Total Duration: ${serverQueue.songs[0].duration} \n`)
-      if(!serverQueue.songs[1]) return message.channel.send(embedQ);
-      embedQ.addField('Up next:','\r\n')
-      for(var x = 1; x <= 5; x++){
+        .setTitle("Queue!")
+        .setColor('PURPLE')
+      if(serverQueue.loop == true){
+        embedQ.setTitle("Queue"+`, Loop is on!`)
+      }
+      if(serverQueue.loop == false){
+        embedQ.setTitle("Queue"+`, Loop is off!`)
+      }
+      embedQ.setDescription(`Now playing: **[` + serverQueue.songs[0].title + '](' + serverQueue.songs[0].url + `)**!\nTotal Duration: ${serverQueue.songs[0].duration} \n`)
+      if(!serverQueue.songs[1]) return await message.channel.send(embedQ);
+      await message.channel.send(embedQ)
+      embedQ.setTitle('Up Next:')
+      for(var x = 1; x <= 5 && x <= serverQueue.songs.length; x++){
         if(serverQueue.songs[x]){
-          embedQ.addField(`${x}.**[${serverQueue.songs[x].title}](${serverQueue.songs[x].url})**`,`${serverQueue.songs[x].duration}`)
-        }else {
-          return await message.channel.send(embedQ);
+          embedQ.setDescription(`${x}. **[` + serverQueue.songs[x].title + '](' + serverQueue.songs[x].url + ')**' + `\nTotal Duration: ${serverQueue.songs[x].duration}`)
+          if(x !== 5 || x !== serverQueue.songs.length) await message.channel.send(embedQ);
+          embedQ.setTitle('')
         }
+        embedQ.setDescription(`${(serverQueue.songs.length) - 1}. **[` + serverQueue.songs[(serverQueue.songs.length) - 1].title + '](' + serverQueue.songs[(serverQueue.songs.length) - 1].url + ')**' + `\nTotal Duration: ${serverQueue.songs[(serverQueue.songs.length) - 1].duration}`)
+        embedQ.setFooter(message.member.displayName)
+        embedQ.setTimestamp(new Date())
+        return await message.channel.send(embedQ)
     }
     if(command === "pause"){
       if(!serverQueue){
@@ -322,13 +343,11 @@ async function play(guild, song) {
      queue.delete(guild.id)
      return;
    }
-   console.log(`Song is playing! ${song}, ${serverQueue.songs[0].title}`)
    const dispatcher = serverQueue.connection.playStream(ytdl(serverQueue.songs[0].url,{filter:'audioonly', quality:'highestaudio', highWaterMark: 1<<25}))
       .on('end', () => {
-        console.log("Song has ended!");
-        if(serverQueue.loop = false){
+        if(serverQueue.loop === false){
           serverQueue.songs.shift();
-        }else{
+        }else if(serverQueue.loop === true){
           serverQueue.songs.push(serverQueue.songs.shift())
         }
         play(guild, serverQueue.songs[0])
@@ -337,16 +356,7 @@ async function play(guild, song) {
     dispatcher.setVolumeLogarithmic(5 / 5);
 };
 const embed = new Discord.RichEmbed()
-    .setTitle("Queue Commands!")
-    .setColor('#0099ff')
-    .addField('P','```This is the play command, add a following url/keyword to add a song to queue and start playing! \nSyntax: "bot p <url/keyword here!>"```', true)
-    .addField('Qstop','```This is the stop command, this will make the bot empty the queue and leave the channel! \nSyntax: "bot stop"```', true)
-    .addField('\u200b','\u200b')
-    .addField('Qskip','```This is the skip command, this will skip the current playing song and start playing the next! \nSyntax: "bot skip"```', true)
-    .addField('Volume','```This command changes the volume for the whole queue, be warey of earrape! \nSyntax: "bot volume <volume here!>"```', true)
-    .addField('\u200b','\u200b')
-    .addField('Qnp','```This command tells you what is currently playing! \nSyntax: "bot np"```', true)
-    .setFooter('bot.mp4', 'https://cdn.discordapp.com/embed/avatars/2.png')
+
 const embedError = new Discord.RichEmbed()
     .setTitle("There's been an error!")
     .setColor('RED')
@@ -358,4 +368,4 @@ const embedSuccess = new Discord.RichEmbed()
     .setColor("GREEN")
 const embedInform = new Discord.RichEmbed()
     .setColor('BLUE')
-client.login(process.env.token);
+client.login("Njk5MzI4MjI3NzE3Njc3MDY2.XphsGA.Ky2YOMCvu_Xh5Irir__FGp1TcYI");
