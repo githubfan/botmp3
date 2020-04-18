@@ -15,6 +15,7 @@ client.on('ready', () =>{
 });
 client.on('message', async message => {
   const serverQueue = queue.get(message.guild.id)
+  let beginTime = 0;
     if (!message.guild) return;
     if(message.author.bot) return;
     if(message.content.indexOf(PREFIX) !== 0) return;
@@ -56,14 +57,18 @@ client.on('message', async message => {
         embedWarn.setFooter(message.member.displayName)
         embedWarn.setDescription('Sorry but you need to be in a channel to play music!')
         return await message.channel.send(embedWarn)
-      } 
+      }
+      if(args[1]){
+        let beginTime = args[1];
+      }
       if(!ytdl.validateURL(link)){
         songInfo = await ytsr(link); 
         song = {
           title: songInfo.items[0].title,
           url: songInfo.items[0].link,
           duration: songInfo.items[0].duration,
-          thumbnail: songInfo.items[0].thumbnail
+          thumbnail: songInfo.items[0].thumbnail,
+          begin: beginTime
         };
       }else {
         try {
@@ -73,7 +78,8 @@ client.on('message', async message => {
             title: songInfo.title,
             url: songInfo.video_url,
             duration: songInfo2.items[0].duration,
-            thumbnail: songInfo2.items[0].thumbnail
+            thumbnail: songInfo2.items[0].thumbnail,
+            begin: beginTime
           }
         }catch(err){
           console.log(`There's been an error trying to search! Here it is: ${err}`)
@@ -158,37 +164,44 @@ client.on('message', async message => {
         embedWarn.setDescription("You need to be in the same voice channel to stop the queue!")
         return await message.channel.send(embedWarn);
       }
-      if(message.member.roles.find(role => role.name === "DJ") || message.member.voiceChannel.members.size === '1'){
-        embedInform.setTitle('Skipping')
-        embedInform.setFooter(message.member.displayName)
-        embedInform.setDescription(`Skipped **${serverQueue.songs[0].title}**`)
-        await message.channel.send(embedInform)
-        return serverQueue.connection.dispatcher.end();
-      }else {
-        if(serverQueue.skipping.includes(message.author.id)){
-          embedWarn.setFooter(message.member.displayName)
-          embedWarn.setDescription('You already voted to skip!')
-          return await message.channel.send(embedWarn)
-        }
-        let skipTotal = (Math.round(message.member.voiceChannel.members.size / 2) - 1)
-        if(serverQueue.skips >= skipTotal){
-          embedInform.setTitle('Skipping!')
+      if(args[0] === undefined){
+        if(message.member.roles.find(role => role.name === "DJ") || message.member.voiceChannel.members.size === '1'){
+          embedInform.setTitle('Skipping')
           embedInform.setFooter(message.member.displayName)
           embedInform.setDescription(`Skipped **${serverQueue.songs[0].title}**`)
           await message.channel.send(embedInform)
-          serverQueue.skipping = [];
-          serverQueue.skips = 0;
           return serverQueue.connection.dispatcher.end();
         }else {
-          if(skipTotal == 1)skipTotal++
-          serverQueue.skips++
-          serverQueue.skipping.push(message.author.id)
-          embedInform.setTitle('Skipping in Progress!')
-          embedInform.setFooter(message.member.displayName)
-          embedInform.setDescription(`You must have a role called 'DJ' or skip this through a voting process, currently ${serverQueue.skips}/${skipTotal}`)
-          return await message.channel.send(embedInform)
+          if(serverQueue.skipping.includes(message.author.id)){
+            embedWarn.setFooter(message.member.displayName)
+            embedWarn.setDescription('You already voted to skip!')
+            return await message.channel.send(embedWarn)
+          }
+          let skipTotal = (Math.round(message.member.voiceChannel.members.size / 2) - 1)
+          if(serverQueue.skips >= skipTotal){
+            embedInform.setTitle('Skipping!')
+            embedInform.setFooter(message.member.displayName)
+            embedInform.setDescription(`Skipped **${serverQueue.songs[0].title}**`)
+            await message.channel.send(embedInform)
+            serverQueue.skipping = [];
+            serverQueue.skips = 0;
+            return serverQueue.connection.dispatcher.end();
+          }else {
+            if(skipTotal == 1)skipTotal++
+            serverQueue.skips++
+            serverQueue.skipping.push(message.author.id)
+            embedInform.setTitle('Skipping in Progress!')
+            embedInform.setFooter(message.member.displayName)
+            embedInform.setDescription(`You must have a role called 'DJ' or skip this through a voting process, currently ${serverQueue.skips}/${skipTotal}`)
+            return await message.channel.send(embedInform)
+          }
         }
       }
+      serverQueue.songs[0].begin === args[0]
+      embedInform.setTitle('Skipping!')
+      embedInform.setFooter(message.member.displayName)
+      embedInform.setDescription(`Skipping ${args[0]}s ahead!`)
+      serverQueue.connection.dispatcher.end();
     }
     if(command === "np"){
       if(!serverQueue){
@@ -231,36 +244,6 @@ client.on('message', async message => {
       embedInform.setDescription(`Volume has been set to ${serverQueue.volume} by ${message.author}.`)
       return await message.channel.send(embedInform)
     }
-    if(command === "queue"){
-      if(!serverQueue){ 
-        embedWarn.setDescription("There's nothing playing.")
-        embedWarn.setFooter(message.member.displayName)
-        return await message.channel.send(embedWarn);
-      }
-      const embedQ = new Discord.RichEmbed()
-        .setTitle("Queue!")
-        .setColor('PURPLE')
-      if(serverQueue.loop == true){
-        embedQ.setTitle("Queue"+`, Loop is on!`)
-      }
-      if(serverQueue.loop == false){
-        embedQ.setTitle("Queue"+`, Loop is off!`)
-      }
-      embedQ.setDescription(`Now playing: **[` + serverQueue.songs[0].title + '](' + serverQueue.songs[0].url + `)**!\nTotal Duration: ${serverQueue.songs[0].duration} \n`)
-      if(!serverQueue.songs[1]) return await message.channel.send(embedQ);
-      await message.channel.send(embedQ)
-      embedQ.setTitle('Up Next:')
-      for(var x = 1; x <= 5 && x <= serverQueue.songs.length; x++){
-        if(serverQueue.songs[x]){
-          embedQ.setDescription(`${x}. **[` + serverQueue.songs[x].title + '](' + serverQueue.songs[x].url + ')**' + `\nTotal Duration: ${serverQueue.songs[x].duration}`)
-          if(x !== 5 || x !== serverQueue.songs.length) await message.channel.send(embedQ);
-          embedQ.setTitle('')
-        }
-        embedQ.setDescription(`${(serverQueue.songs.length) - 1}. **[` + serverQueue.songs[(serverQueue.songs.length) - 1].title + '](' + serverQueue.songs[(serverQueue.songs.length) - 1].url + ')**' + `\nTotal Duration: ${serverQueue.songs[(serverQueue.songs.length) - 1].duration}`)
-        embedQ.setFooter(message.member.displayName)
-        embedQ.setTimestamp(new Date())
-        return await message.channel.send(embedQ)
-    }
     if(command === "pause"){
       if(!serverQueue){
         embedWarn.setFooter(message.member.displayName)
@@ -299,6 +282,48 @@ client.on('message', async message => {
         return serverQueue.connection.dispatcher.resume();
       }
     }
+    if(command === "queue"){
+      if(!serverQueue){ 
+        embedWarn.setDescription("There's nothing playing.")
+        embedWarn.setFooter(message.member.displayName)
+        return await message.channel.send(embedWarn);
+      }
+      const embedQ = new Discord.RichEmbed()
+        .setTitle("Queue!")
+        .setColor('PURPLE')
+      if(serverQueue.loop == true){
+        embedQ.setTitle("Queue"+`, Loop is on!`)
+      }
+      if(serverQueue.loop == false){
+        embedQ.setTitle("Queue"+`, Loop is off!`)
+      }
+      embedQ.setDescription(`Now playing: **[` + serverQueue.songs[0].title + '](' + serverQueue.songs[0].url + `)**!\nTotal Duration: ${serverQueue.songs[0].duration} \n`)
+      if(!serverQueue.songs[1]) return await message.channel.send(embedQ);
+      await message.channel.send(embedQ)
+      embedQ.setTitle('Up Next:')
+      for(var x = 1; x <= 5 && x <= serverQueue.songs.length; x++){
+        if(serverQueue.songs[x]){
+          embedQ.setDescription(`${x}. **[` + serverQueue.songs[x].title + '](' + serverQueue.songs[x].url + ')**' + `\nTotal Duration: ${serverQueue.songs[x].duration}`)
+          if(x !== 5 || x !== serverQueue.songs.length) await message.channel.send(embedQ);
+          embedQ.setTitle('')
+        }
+        embedQ.setDescription(`${(serverQueue.songs.length) - 1}. **[` + serverQueue.songs[(serverQueue.songs.length) - 1].title + '](' + serverQueue.songs[(serverQueue.songs.length) - 1].url + ')**' + `\nTotal Duration: ${serverQueue.songs[(serverQueue.songs.length) - 1].duration}`)
+        embedQ.setFooter(message.member.displayName)
+        embedQ.setTimestamp(new Date())
+        return await message.channel.send(embedQ)
+      }
+    }
+    if(command === 'shuffle'){
+      if(!serverQueue){
+        embedWarn.setFooter(message.member.displayName)
+        embedWarn.setDescription("There's nothing playing.")
+        return await message.channel.send(embedWarn); 
+      }
+      if(queue.get(message.guild.id).voiceChannel !== message.member.voiceChannel || !message.member.voiceChannel){
+        embedWarn.setFooter(message.member.displayName)
+        embedWarn.setDescription("You need to be in the same voice channel to resume the queue!")
+        return await message.channel.send(embedWarn);
+      }
     }
     if(command === "help"){
       embed.setFooter(message.member.displayName)
@@ -368,4 +393,4 @@ const embedSuccess = new Discord.RichEmbed()
     .setColor("GREEN")
 const embedInform = new Discord.RichEmbed()
     .setColor('BLUE')
-client.login(process.env.token);
+client.login('Njk5MzI4MjI3NzE3Njc3MDY2.XpnjeQ.KbBrR7qm8DwWMPYgGXoMrOXC8u0');
