@@ -393,4 +393,4 @@ const embedSuccess = new Discord.RichEmbed()
     .setColor("GREEN")
 const embedInform = new Discord.RichEmbed()
     .setColor('BLUE')
-client.login('Njk5MzI4MjI3NzE3Njc3MDY2.XpnjeQ.KbBrR7qm8DwWMPYgGXoMrOXC8u0');
+client.login(process.env.token);
