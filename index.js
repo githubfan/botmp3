@@ -6,7 +6,8 @@ const queue = new Map;
 var songInfo, songInfo2, song = new Object;
 let lock = false;
 const getInfo = require('ytdl-getinfo')
-let filter;
+let filter, a;
+
 
 client.on('ready', () =>{
     console.log('Locked and loaded.');
@@ -16,10 +17,10 @@ client.on('ready', () =>{
 client.on('message', async message => {
   const serverQueue = queue.get(message.guild.id)
   let beginTime = 0;
-    if(message.member.id !== "245992052603486209" && lock === true) return;
     if(!message.guild) return;
     if(message.author.bot) return;
-    if(message.content.indexOf('bot') !== 0 || message.content.indexOf('Bot') !== 0 ) return;
+    if(message.author.id !== "245992052603486209" && lock === true) return;
+    if(message.content.toLowerCase().indexOf('bot') !== 0) return;
     const args = message.content.slice(3).trim().split(/ +/g);
     const command = args.shift().toLowerCase();
     message.delete().catch(err=>{}); 
@@ -367,8 +368,8 @@ client.on('message', async message => {
       if(message.member.id !== "245992052603486209") return;
       embedInform.setFooter(message.member.displayName)
       embedInform.setTitle('Lockdown!')
-      embedInform.setDescription(`Lockdown has been toggled to ${lock}!`)
       lock = !lock
+      embedInform.setDescription(`Lockdown has been toggled to ${lock}!`)
       message.channel.send(embedInform)
     }
 })
@@ -418,4 +419,4 @@ const embedSuccess = new Discord.RichEmbed()
     .setColor("GREEN")
 const embedInform = new Discord.RichEmbed()
     .setColor('BLUE')
-client.login(process.env.token);
+client.login('Njk5MzI4MjI3NzE3Njc3MDY2.XptceA.2oOEHBhqCfc13uFLgpUUZ7ht37Q');
