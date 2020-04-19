@@ -2,9 +2,9 @@ const Discord = require('discord.js');
 const client = new Discord.Client();
 const ytdl = require('ytdl-core');
 const ytsr = require('ytsr');
-const PREFIX = 'bot';
 const queue = new Map;
 var songInfo, songInfo2, song = new Object;
+let lock = false;
 const getInfo = require('ytdl-getinfo')
 let filter;
 
@@ -16,10 +16,11 @@ client.on('ready', () =>{
 client.on('message', async message => {
   const serverQueue = queue.get(message.guild.id)
   let beginTime = 0;
-    if (!message.guild) return;
+    if(message.member.id !== "245992052603486209" && lock === true) return;
+    if(!message.guild) return;
     if(message.author.bot) return;
-    if(message.content.indexOf(PREFIX) !== 0) return;
-    const args = message.content.slice(PREFIX.length).trim().split(/ +/g);
+    if(message.content.indexOf('bot') !== 0 || message.content.indexOf('Bot') !== 0 ) return;
+    const args = message.content.slice(3).trim().split(/ +/g);
     const command = args.shift().toLowerCase();
     message.delete().catch(err=>{}); 
     embedInform.setTimestamp(new Date())
@@ -59,7 +60,7 @@ client.on('message', async message => {
         return await message.channel.send(embedWarn)
       }
       if(args[1]){
-        let beginTime = args[1];
+        beginTime = args[1];
       }
       if(!ytdl.validateURL(link)){
         songInfo = await ytsr(link); 
@@ -166,6 +167,8 @@ client.on('message', async message => {
       }
       if(args[0] === undefined){
         if(message.member.roles.find(role => role.name === "DJ") || message.member.voiceChannel.members.size === '1'){
+          serverQueue.skipping = [];
+          serverQueue.skips = 0;
           embedInform.setTitle('Skipping')
           embedInform.setFooter(message.member.displayName)
           embedInform.setDescription(`Skipped **${serverQueue.songs[0].title}**`)
@@ -255,6 +258,11 @@ client.on('message', async message => {
         embedWarn.setDescription("You need to be in the same voice channel to pause the queue!")
         return await message.channel.send(embedWarn);
       }
+      if(serverQueue.playing === false){
+        embedWarn.setFooter(message.member.displayName)
+        embedWarn.setDescription(`The queue is already paused!`)
+        return await message.channel.send(embedInform)
+      }
       if(message.member.roles.find(role => role.name === "DJ") || message.member.voiceChannel.members.size === '1'){
         embedInform.setFooter(message.member.displayName)
         embedInform.setTitle('Pausing the queue')
@@ -273,6 +281,11 @@ client.on('message', async message => {
         embedWarn.setFooter(message.member.displayName)
         embedWarn.setDescription("You need to be in the same voice channel to resume the queue!")
         return await message.channel.send(embedWarn);
+      }
+      if(serverQueue.playing === true){
+        embedWarn.setFooter(message.member.displayName)
+        embedWarn.setDescription(`The queue is already playing!`)
+        return await message.channel.send(embedInform)
       }
       if(message.member.roles.find(role => role.name === "DJ") || message.member.voiceChannel.members.size === '1'){
         embedInform.setFooter(message.member.displayName)
@@ -327,7 +340,11 @@ client.on('message', async message => {
     }
     if(command === "help"){
       embed.setFooter(message.member.displayName)
-      return await message.channel.send(embed);
+      await message.author.send(embed)
+      embedInform.setFooter(message.member.displayName)
+      embedInform.setTitle("Sent to your DM's!")
+      embedInform.setDescription("I've sent the command list to your DM's!")
+      return await message.channel.send(embedInform)
     }
     if(command === "loop"){
       if(!serverQueue){
@@ -345,6 +362,14 @@ client.on('message', async message => {
         embedInform.setDescription("You must have the DJ role to toggle looping!")
         return message.channel.send(embedInform)
       }
+    }
+    if(command === 'lock'){
+      if(message.member.id !== "245992052603486209") return;
+      embedInform.setFooter(message.member.displayName)
+      embedInform.setTitle('Lockdown!')
+      embedInform.setDescription(`Lockdown has been toggled to ${lock}!`)
+      lock = !lock
+      message.channel.send(embedInform)
     }
 })
 client.on("guildCreate", guild => {
