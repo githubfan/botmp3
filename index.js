@@ -7,11 +7,9 @@ var songInfo, songInfo2, song = new Object;
 let lock = false;
 const getInfo = require('ytdl-getinfo')
 let filter, a;
-
-
 client.on('ready', () =>{
     console.log('Locked and loaded.');
-    client.user.setActivity(`in ${client.guilds.size} servers`);
+    client.user.setActivity(`in ${client.guilds.size} servers, use ". help"`);
     client.user.setStatus('online');
 });
 client.on('message', async message => {
@@ -20,19 +18,14 @@ client.on('message', async message => {
     if(!message.guild) return;
     if(message.author.bot) return;
     if(message.author.id !== "245992052603486209" && lock === true) return;
-    if(message.content.toLowerCase().indexOf('bot') !== 0) return;
-    const args = message.content.slice(3).trim().split(/ +/g);
+    if(message.content.toLowerCase().indexOf('.') !== 0) return;
+    const args = message.content.slice(1).trim().split(/ +/g);
     const command = args.shift().toLowerCase();
     message.delete().catch(err=>{}); 
     embedInform.setTimestamp(new Date())
     embedWarn.setTimestamp(new Date())
     embedError.setTimestamp(new Date())
     embed.setTimestamp(new Date())
-    if(command === ""){
-      embedWarn.setFooter(message.member.displayName)
-      embedWarn.setDescription("This is an invalid command argument, use **'bot help'** to find out what commands this bot provides!")
-      return await message.channel.send(embedWarn)
-    } 
     if(command === "ping")
     {
       const m = await message.channel.send("Ping?");
@@ -41,18 +34,18 @@ client.on('message', async message => {
       embedSuccess.setDescription(`Pong! Latency is ${m.createdTimestamp - message.createdTimestamp}ms. API Latency is ${Math.round(client.ping)}ms`)
       await m.edit(embedSuccess);
     }
-    if(command === "end.mp3")
+    else if(command === "end.mp3" || command === "end")
     {
         if(message.member.id !== "245992052603486209"){
             embedWarn.setFooter(message.member.displayName)
             embedWarn.setDescription("You may not do this.")
             return await message.reply(embedWarn);
         }
-        await message.channel.send("AGHHH NO!");
+        await message.channel.send("Shutting down..");
         client.user.setStatus('invisible');
         return process.exit(0);
     }
-    if(command === "p"){
+    else if(command === "p" || command === "play"){
       const link = args.join(" ");
       const voiceChannel = message.member.voiceChannel;
       if(!voiceChannel){ 
@@ -132,7 +125,7 @@ client.on('message', async message => {
         return await message.channel.send(embedInform)
       }
     }
-    if(command === "stop"){
+    else if(command === "stop" || command === 'stp'){
       if(queue.get(message.guild.id).voiceChannel !== message.member.voiceChannel || !message.member.voiceChannel){
         embedWarn.setFooter(message.member.displayName)
         embedWarn.setDescription("You need to be in the same voice channel to stop the queue!")
@@ -155,7 +148,7 @@ client.on('message', async message => {
       serverQueue.songs = [];
       return serverQueue.connection.dispatcher.end();
     }
-    if(command === "skip"){
+    else if(command === "skip" || command === "skp"){
       if(!serverQueue){
         embedWarn.setFooter(message.member.displayName)
         embedWarn.setDescription("There's nothing playing.")
@@ -207,18 +200,7 @@ client.on('message', async message => {
       embedInform.setDescription(`Skipping ${args[0]}s ahead!`)
       serverQueue.connection.dispatcher.end();
     }
-    if(command === "np"){
-      if(!serverQueue){
-        embedWarn.setFooter(message.member.displayName)
-        embedWarn.setDescription("There's nothing playing!")
-        return await message.channel.send(embedWarn);
-      }
-      embedInform.setTitle('Now playing!')
-      embedInform.setFooter(message.member.displayName)
-      embedInform.setDescription(`Now playing: **${serverQueue.songs[0].title}**`)
-      return await message.channel.send(embedInform);
-    }
-    if(command === "vol"){
+    else if(command === "vol" || command === "volume"){
       if(!((message.member.roles.find(role => role.name === "DJ") || message.member.voiceChannel.members.size === '1'))){
         embedWarn.setFooter(message.member.displayName)
         embedWarn.setDescription(`You must have a role called 'DJ' or be alone in voice channel to change the volume!`)
@@ -248,7 +230,7 @@ client.on('message', async message => {
       embedInform.setDescription(`Volume has been set to ${serverQueue.volume} by ${message.author}.`)
       return await message.channel.send(embedInform)
     }
-    if(command === "pause"){
+    else if(command === "pause" || command === "pse"){
       if(!serverQueue){
         embedWarn.setFooter(message.member.displayName)
         embedWarn.setDescription("There's nothing playing.")
@@ -272,7 +254,7 @@ client.on('message', async message => {
         return serverQueue.connection.dispatcher.pause();
       }
     }
-    if(command === "resume"){
+    else if(command === "resume" || command === 'rme'){
       if(!serverQueue){
         embedWarn.setFooter(message.member.displayName)
         embedWarn.setDescription("There's nothing playing.")
@@ -296,7 +278,7 @@ client.on('message', async message => {
         return serverQueue.connection.dispatcher.resume();
       }
     }
-    if(command === "queue"){
+    else if(command === "queue" || command === "q"){
       if(!serverQueue){ 
         embedWarn.setDescription("There's nothing playing.")
         embedWarn.setFooter(message.member.displayName)
@@ -321,13 +303,18 @@ client.on('message', async message => {
           if(x !== 5 || x !== serverQueue.songs.length) await message.channel.send(embedQ);
           embedQ.setTitle('')
         }
-        embedQ.setDescription(`${(serverQueue.songs.length) - 1}. **[` + serverQueue.songs[(serverQueue.songs.length) - 1].title + '](' + serverQueue.songs[(serverQueue.songs.length) - 1].url + ')**' + `\nTotal Duration: ${serverQueue.songs[(serverQueue.songs.length) - 1].duration}`)
+        if(serverQueue.songs.length !== 1){
+          embedQ.setDescription(`${(serverQueue.songs.length) - 1}. **[` + serverQueue.songs[(serverQueue.songs.length) - 1].title + '](' + serverQueue.songs[(serverQueue.songs.length) - 1].url + ')**' + `\nTotal Duration: ${serverQueue.songs[(serverQueue.songs.length) - 1].duration}`)
+        }else{
+          embedQ.setDescription();
+        }
         embedQ.setFooter(message.member.displayName)
         embedQ.setTimestamp(new Date())
-        return await message.channel.send(embedQ)
+        return await message.channel.send(embedQ);
+
       }
     }
-    if(command === 'shuffle'){
+    else if(command === 'shuffle' || command === "sle"){
       if(!serverQueue){
         embedWarn.setFooter(message.member.displayName)
         embedWarn.setDescription("There's nothing playing.")
@@ -338,8 +325,17 @@ client.on('message', async message => {
         embedWarn.setDescription("You need to be in the same voice channel to resume the queue!")
         return await message.channel.send(embedWarn);
       }
+      if(message.member.roles.find(role => role.name === "DJ") || message.member.voiceChannel.members.size === '1'){
+        shuffle(serverQueue.songs)
+        var a = serverQueue.loop
+        serverQueue.loop = true; serverQueue.connection.dispatcher.end(); serverQueue.loop = a;
+        embedInform.setDescription('Shuffled the queue!')
+        embedInform.setTitle('Shuffling the queue.')
+        embedInform.setFooter(message.member.displayName)
+        return await message.channel.send(embedInform)
+      }
     }
-    if(command === "help"){
+    else if(command === "help"){
       embed.setFooter(message.member.displayName)
       await message.author.send(embed)
       embedInform.setFooter(message.member.displayName)
@@ -347,7 +343,7 @@ client.on('message', async message => {
       embedInform.setDescription("I've sent the command list to your DM's!")
       return await message.channel.send(embedInform)
     }
-    if(command === "loop"){
+    else if(command === "loop" || command === 'lp'){
       if(!serverQueue){
         embedWarn.setFooter(message.member.displayName)
         embedWarn.setDescription("There's nothing playing!")
@@ -364,22 +360,27 @@ client.on('message', async message => {
         return message.channel.send(embedInform)
       }
     }
-    if(command === 'lock'){
+    else if(command === 'lock'){
       if(message.member.id !== "245992052603486209") return;
       embedInform.setFooter(message.member.displayName)
       embedInform.setTitle('Lockdown!')
       lock = !lock
       embedInform.setDescription(`Lockdown has been toggled to ${lock}!`)
-      message.channel.send(embedInform)
+      await message.channel.send(embedInform)
+    }
+    else{
+      embedWarn.setFooter(message.member.displayName)
+      embedWarn.setDescription("This is an invalid command, use **'. help'** to find out what commands this bot provides!")
+      return await message.channel.send(embedWarn)
     }
 })
 client.on("guildCreate", guild => {
     console.log(`New guild joined: ${guild.name} (id: ${guild.id}). This guild has ${guild.memberCount} members!`);
-    client.user.setActivity(`Serving ${client.guilds.size} servers`);
+    client.user.setActivity(`Serving ${client.guilds.size} servers, use ". help"`);
 });
 client.on("guildDelete", guild => {
     console.log(`I have been removed from: ${guild.name} (id: ${guild.id})`);
-    client.user.setActivity(`Serving ${client.guilds.size} servers`);
+    client.user.setActivity(`Serving ${client.guilds.size} servers, use ". help"`);
 });
 client.on('warn', info => {
   console.log(info)
@@ -406,8 +407,28 @@ async function play(guild, song) {
       .on('error', error => {console.error(error)})
     dispatcher.setVolumeLogarithmic(5 / 5);
 };
+async function shuffle(array) {
+  for (var i = array.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var temp = array[i];
+    array[i] = array[j];
+    array[j] = temp;
+}
+}
 const embed = new Discord.RichEmbed()
-
+    .setTitle('Commands list for Pipe')
+    .setColor('RED')
+    .setDescription("Some commands require DJ, it is a role simply called 'DJ' and does not require any special permissions, otherwise the command may be operated if there's one person in a voice channel alone or by a voting process.")
+    .addField('play/p', "Plays any youtube url/search term. \nSYNTAX: ('. play https://www.youtube.com/video/this!') or ('. p youtube is cool')")
+    .addField('queue/q', "Shows the currently playing stream and up coming youtube videos. \nSYNTAX: ('. queue') or ('. q')")
+    .addField('stop/stp', "Stops the currently playing stream while deleting the whole queue. Requires to be a DJ or have maximum 1 person in a voice channel.  \nSYNTAX: ('. stop') or ('. stp')")
+    .addField('skip/skp', "Skips the currently playing stream. Requires to be a DJ or have maximum 1 person in a voice channel, else voting. \nSYNTAX: ('. skip') or ('. skp')")
+    .addField('pause/pse', "Pauses the currently playing stream and the queue. Requires to be a DJ or have maximum 1 person in a voice channel. \nSYNXTAX: ('. pause') or ('. pse')")
+    .addField('resume/rme',"Resumes the currently paused stream and the queue. Requires to be a DJ or have maximum 1 person in a voice channel. \nSYNXTAX: ('. resume') or ('. rme')")
+    .addField('volume/vol', "Displays or changes the volume for the rest of time the whole queue plays. Requires to be a DJ or have maximum 1 person in a voice channel to change volume. \nDEFAULT: 5, SYNTAX: ('. volume') or ('. vol')")
+    .addField('shuffle/sle', "Shuffles the whole queue then restarts the song first in the queue. Requires to be a DJ or have maximum 1 person in a voice channel.  \nSYNTAX: ('. shuffle') or ('. sle')")
+    .addField('loop/lp', "Loops the whole queue instead of removing a song when it ends. \nSYNTAX: ('. loop') or ('. lp')")
+    .addField('ping', "Gets the bot's and Discord Api's latency. \nSYNTAX: ('. ping')")
 const embedError = new Discord.RichEmbed()
     .setTitle("There's been an error!")
     .setColor('RED')
@@ -419,4 +440,4 @@ const embedSuccess = new Discord.RichEmbed()
     .setColor("GREEN")
 const embedInform = new Discord.RichEmbed()
     .setColor('BLUE')
-client.login(process.env.token);
+client.login('Njk5MzI4MjI3NzE3Njc3MDY2.Xpywyw.dQLWFS0v2TDAbK6UAtN_M3jXW2s');
