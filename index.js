@@ -238,8 +238,8 @@ client.on('message', async message => {
         embedWarn.setFooter(message.member.displayName)
         return await message.channel.send(embedWarn)
       }
-      if(a > 1000){
-        a = 1000;
+      if(a > 15){
+        a = 15;
       }else if(a < 1){
         a = 1;
       }
@@ -326,7 +326,7 @@ client.on('message', async message => {
           embedQ.setTitle('')
           }
         }
-        if(serverQueue.songs.length > 2){
+        if(serverQueue.songs.length >= 3){
           embedQ.setDescription(`${(serverQueue.songs.length) - 1}. **[` + serverQueue.songs[(serverQueue.songs.length) - 1].title + '](' + serverQueue.songs[(serverQueue.songs.length) - 1].url + ')**' + `\nTotal Duration: ${serverQueue.songs[(serverQueue.songs.length) - 1].duration}`)
         }else{
           embedQ.setDescription();
@@ -401,7 +401,7 @@ client.on('message', async message => {
       }
       if(message.member.roles.find(role => role.name === "DJ") || message.member.voiceChannel.members.size === '1'){
         var a = serverQueue.loop
-        serverQueue.loop = true; serverQueue.connection.dispatcher.end(); serverQueue.loop = a;
+        serverQueue.loop = false; serverQueue.connection.dispatcher.end(); serverQueue.loop = a;
         embedInform.setDescription('Removing song...')
         embedInform.setTitle('Song removed!')
         embedInform.setFooter(message.member.displayName)
