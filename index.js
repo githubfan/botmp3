@@ -9,7 +9,7 @@ const getInfo = require('ytdl-getinfo')
 let filter, a;
 client.on('ready', () =>{
     console.log('Locked and loaded.');
-    client.user.setActivity(`in ${client.guilds.size} servers, use ". help"`);
+    client.user.setActivity(`Pipe~ || . help`);
     client.user.setStatus('online');
 });
 client.on('message', async message => {
@@ -109,7 +109,7 @@ client.on('message', async message => {
           await message.channel.send(embedInform)
           var connection = await voiceChannel.join();
           QueueConstruct.connection = connection;
-          play(message.guild, queue.get(message.guild.id).songs[0].url);
+          play(message.guild, queue.get(message.guild.id).songs[0].url, voiceChannel);
         } catch(error) {
           queue.delete(message.guild.id);
           console.error(`I could not join this voice channel: ${error}`)
@@ -118,11 +118,26 @@ client.on('message', async message => {
           return await message.channel.send(embedError);
         }
       } else {
-        serverQueue.songs.push(song);
-        embedInform.setTitle(`Adding a song to the queue...`)
-        embedInform.setFooter(message.member.displayName)
-        embedInform.setDescription(`**${song.title}** has been added to the queue!`)
-        return await message.channel.send(embedInform)
+        try{
+          serverQueue.songs.push(song);
+          embedInform.setTitle(`Adding a song to the queue...`)
+          embedInform.setFooter(message.member.displayName)
+          embedInform.setDescription(`**${song.title}** has been added to the queue!`)
+          return await message.channel.send(embedInform)
+        }catch(err){
+          try{
+            await voiceChannel.join();
+            console.log(`Error trying to append song to queue ln.130 : ${err}`)
+          }catch(err){
+            console.log(`error trying to self fix error ln.132 : ${err}`)
+            try{
+              queue.delete(message.guild.id);
+              voiceChannel.leave();
+            }catch(err){
+              console.log(`error trying to leave voice channel and delete queue ln.137 : ${err}`)
+            }   
+          }
+        }
       }
     }
     else if(command === "stop" || command === 'stp'){
@@ -250,6 +265,7 @@ client.on('message', async message => {
         embedInform.setFooter(message.member.displayName)
         embedInform.setTitle('Pausing the queue')
         embedInform.setDescription(`The queue has been paused!`)
+        serverQueue.playing = !serverQueue.playing
         await message.channel.send(embedInform)
         return serverQueue.connection.dispatcher.pause();
       }
@@ -274,6 +290,7 @@ client.on('message', async message => {
         embedInform.setFooter(message.member.displayName)
         embedInform.setTitle('Resuming the queue')
         embedInform.setDescription(`The queue has been resumed!`)
+        serverQueue.playing = !serverQueue.playing
         await message.channel.send(embedInform)
         return serverQueue.connection.dispatcher.resume();
       }
@@ -368,6 +385,10 @@ client.on('message', async message => {
       embedInform.setDescription(`Lockdown has been toggled to ${lock}!`)
       await message.channel.send(embedInform)
     }
+    else if(command === "join"){
+      const voiceChannel = message.member.voiceChannel;
+      connection = await voiceChannel.join();
+    }
     else{
       embedWarn.setFooter(message.member.displayName)
       embedWarn.setDescription("This is an invalid command, use **'. help'** to find out what commands this bot provides!")
@@ -376,11 +397,11 @@ client.on('message', async message => {
 })
 client.on("guildCreate", guild => {
     console.log(`New guild joined: ${guild.name} (id: ${guild.id}). This guild has ${guild.memberCount} members!`);
-    client.user.setActivity(`Serving ${client.guilds.size} servers, use ". help"`);
+    //client.user.setActivity(`Serving ${client.guilds.size} servers, use ". help"`);
 });
 client.on("guildDelete", guild => {
     console.log(`I have been removed from: ${guild.name} (id: ${guild.id})`);
-    client.user.setActivity(`Serving ${client.guilds.size} servers, use ". help"`);
+    //client.user.setActivity(`Serving ${client.guilds.size} servers, use ". help"`);
 });
 client.on('warn', info => {
   console.log(info)
@@ -388,7 +409,7 @@ client.on('warn', info => {
 client.on('error', info => {
   console.log(info)
 })
-async function play(guild, song) {
+async function play(guild, song, vc) {
    const serverQueue = queue.get(guild.id);
    if(!song) {
      serverQueue.voiceChannel.leave();
@@ -402,9 +423,19 @@ async function play(guild, song) {
         }else if(serverQueue.loop === true){
           serverQueue.songs.push(serverQueue.songs.shift())
         }
-        play(guild, serverQueue.songs[0])
+        play(guild, serverQueue.songs[0], vc)
       })
-      .on('error', error => {console.error(error)})
+      .on('error', error => {
+        try{
+          serverQueue.voiceChannel.leave();
+          queue.delete(guild.id);
+          console.error(`error event in dispatcher : ${error}`)
+          embedError.setDescription('Error in Dispatcher, leaving voice channel and deleting the queue!')
+          return message.serverQueue.textChannel.send(embedError)
+        }catch(err){
+          console.log(`error trying to self fix error in dispatcher : ${err}`)
+        }
+      })
     dispatcher.setVolumeLogarithmic(5 / 5);
 };
 async function shuffle(array) {
