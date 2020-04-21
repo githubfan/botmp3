@@ -243,6 +243,7 @@ client.on('message', async message => {
       }else if(a < 1){
         a = 1;
       }
+      serverQueue.volume = a
       serverQueue.connection.dispatcher.setVolumeLogarithmic(a / 5);
       embedInform.setTitle('Volume Change!')
       embedInform.setFooter(message.member.displayName)
