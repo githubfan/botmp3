@@ -94,7 +94,7 @@ client.on('message', async message => {
           voiceChannel: voiceChannel,
           connection: null,
           songs: [],
-          volume: 5,
+          volume: 1,
           playing: true,
           skips: 0,
           skipping: [],
@@ -109,7 +109,7 @@ client.on('message', async message => {
           await message.channel.send(embedInform)
           var connection = await voiceChannel.join();
           QueueConstruct.connection = connection;
-          play(message.guild, queue.get(message.guild.id).songs[0].url, voiceChannel);
+          play(message.guild, queue.get(message.guild.id).songs[0].url, voiceChannel, message);
         } catch(error) {
           queue.delete(message.guild.id);
           console.error(`I could not join this voice channel: ${error}`)
@@ -232,14 +232,18 @@ client.on('message', async message => {
         embedInform.setDescription(`Current volume: **${serverQueue.volume}**`)
         return await message.channel.send(embedInform)
       }
-      if(args[0] > 25){
-        serverQueue.volume = 25;
-      }else if(args[0] < 1){
-        serverQueue.volume = 1;
-      }else{
-        serverQueue.volume = args[0];
+      var a = parseInt(args[0]);
+      if(a !== parseInt(a, 10)){
+        embedWarn.setDescription('This is not an integer!')
+        embedWarn.setFooter(message.member.displayName)
+        return await message.channel.send(embedWarn)
       }
-      serverQueue.connection.dispatcher.setVolumeLogarithmic(args[0] / 5);
+      if(a > 25){
+        a = 25;
+      }else if(a < 1){
+        a = 1;
+      }
+      serverQueue.connection.dispatcher.setVolumeLogarithmic(a / 5);
       embedInform.setTitle('Volume Change!')
       embedInform.setFooter(message.member.displayName)
       embedInform.setDescription(`Volume has been set to ${serverQueue.volume} by ${message.author}.`)
@@ -328,7 +332,6 @@ client.on('message', async message => {
         embedQ.setFooter(message.member.displayName)
         embedQ.setTimestamp(new Date())
         return await message.channel.send(embedQ);
-
       }
     }
     else if(command === 'shuffle' || command === "sle"){
@@ -409,7 +412,7 @@ client.on('warn', info => {
 client.on('error', info => {
   console.log(info)
 })
-async function play(guild, song, vc) {
+async function play(guild, song, vc, message) {
    const serverQueue = queue.get(guild.id);
    if(!song) {
      serverQueue.voiceChannel.leave();
@@ -423,7 +426,7 @@ async function play(guild, song, vc) {
         }else if(serverQueue.loop === true){
           serverQueue.songs.push(serverQueue.songs.shift())
         }
-        play(guild, serverQueue.songs[0], vc)
+        play(guild, serverQueue.songs[0], vc, message)
       })
       .on('error', error => {
         try{
@@ -436,7 +439,7 @@ async function play(guild, song, vc) {
           console.log(`error trying to self fix error in dispatcher : ${err}`)
         }
       })
-    dispatcher.setVolumeLogarithmic(5 / 5);
+    dispatcher.setVolumeLogarithmic(serverQueue.volume);
 };
 async function shuffle(array) {
   for (var i = array.length - 1; i > 0; i--) {
@@ -471,4 +474,4 @@ const embedSuccess = new Discord.RichEmbed()
     .setColor("GREEN")
 const embedInform = new Discord.RichEmbed()
     .setColor('BLUE')
-client.login(process.env.token);
+client.login('Njk5MzI4MjI3NzE3Njc3MDY2.Xp3oYQ.hS7zi4bTTvex_rNz4GM6lZK3KIk');
