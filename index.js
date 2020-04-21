@@ -326,11 +326,7 @@ client.on('message', async message => {
           embedQ.setTitle('')
           }
         }
-        if(serverQueue.songs.length >= 3){
-          embedQ.setDescription(`${(serverQueue.songs.length) - 1}. **[` + serverQueue.songs[(serverQueue.songs.length) - 1].title + '](' + serverQueue.songs[(serverQueue.songs.length) - 1].url + ')**' + `\nTotal Duration: ${serverQueue.songs[(serverQueue.songs.length) - 1].duration}`)
-        }else{
-          embedQ.setDescription();
-        }
+        embedQ.setDescription('')
         embedQ.setFooter(message.member.displayName)
         embedQ.setTimestamp(new Date())
         return await message.channel.send(embedQ);
