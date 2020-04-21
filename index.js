@@ -238,8 +238,8 @@ client.on('message', async message => {
         embedWarn.setFooter(message.member.displayName)
         return await message.channel.send(embedWarn)
       }
-      if(a > 25){
-        a = 25;
+      if(a > 1000){
+        a = 1000;
       }else if(a < 1){
         a = 1;
       }
@@ -324,6 +324,7 @@ client.on('message', async message => {
           embedQ.setDescription(`${x}. **[` + serverQueue.songs[x].title + '](' + serverQueue.songs[x].url + ')**' + `\nTotal Duration: ${serverQueue.songs[x].duration}`)
           if(x !== 5 || x !== serverQueue.songs.length) await message.channel.send(embedQ);
           embedQ.setTitle('')
+          }
         }
         if(serverQueue.songs.length > 2){
           embedQ.setDescription(`${(serverQueue.songs.length) - 1}. **[` + serverQueue.songs[(serverQueue.songs.length) - 1].title + '](' + serverQueue.songs[(serverQueue.songs.length) - 1].url + ')**' + `\nTotal Duration: ${serverQueue.songs[(serverQueue.songs.length) - 1].duration}`)
@@ -333,7 +334,7 @@ client.on('message', async message => {
         embedQ.setFooter(message.member.displayName)
         embedQ.setTimestamp(new Date())
         return await message.channel.send(embedQ);
-      }
+
     }
     else if(command === 'shuffle' || command === "sle"){
       if(!serverQueue){
