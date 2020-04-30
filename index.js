@@ -451,7 +451,7 @@ async function play(guild, song, vc, message) {
           console.log(`error trying to self fix error in dispatcher : ${err}`)
         }
       })
-    dispatcher.setVolumeLogarithmic(serverQueue.volume);
+    dispatcher.setVolumeLogarithmic(serverQueue.volume / 5);
 };
 async function shuffle(array) {
   for (var i = array.length - 1; i > 0; i--) {
